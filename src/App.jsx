@@ -74,7 +74,7 @@ function Scene() {
     <>
       <group rotation={[0, 0, 0]} positionY={-0.5}>
         <Ground />
-        <Shadows />
+        {/* <Shadows /> */}
         <ambientLight intensity={0.25} />
         <directionalLight
           castShadow
@@ -114,7 +114,7 @@ function Scene() {
                 setPosition={(x, y, z) => {
                   gsap.to(camera.position, {
                     x: () => -x,
-                    y: () => 10,
+                    y: () => z + 10,
                     z: () => -y,
                     duration: 1.5,
                   });
