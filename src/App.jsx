@@ -3,20 +3,16 @@
 /* eslint-disable react/display-name */
 import * as THREE from 'three';
 import { memo, useRef, useState, useEffect, useMemo } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import {
   Grid,
-  Center,
   AccumulativeShadows,
   RandomizedLight,
   Environment,
   useGLTF,
-  CameraControls,
   Plane,
   OrbitControls,
 } from '@react-three/drei';
-
-const { DEG2RAD } = THREE.MathUtils;
 
 const SCALE = 10;
 
@@ -61,13 +57,21 @@ function Scene() {
     camera.near = 0.1;
     camera.far = 3000;
     camera.aspect = window.innerWidth / window.innerHeight;
-    camera.position.set(0, 50, 500);
+    camera.position.set(0, 100, 400);
     camera.updateProjectionMatrix();
   }, []);
 
+  useFrame(() => {
+    camera.lookAt(
+      -apiData.Shapes[0].Y,
+      apiData.Shapes[0].Height / 2,
+      -apiData.Shapes[0].X
+    );
+  });
+
   return (
     <>
-      <group rotation={[0, Math.PI, 0]} positionY={-0.5}>
+      <group rotation={[0, 0, 0]} positionY={-0.5}>
         <Ground />
         <Shadows />
         <ambientLight intensity={0.25} />
@@ -89,13 +93,35 @@ function Scene() {
         {apiData && (
           <Screen
             args={[apiData.Shapes[0].Width, apiData.Shapes[0].Height]}
-            x={apiData.Shapes[0].Y}
+            x={-apiData.Shapes[0].Y}
             y={apiData.Shapes[0].Height / 2}
-            z={apiData.Shapes[0].X}
-            rotation={[0, Math.PI, 0]}
+            z={-apiData.Shapes[0].X}
+            rotation={[0, 0, 0]}
           />
         )}
-        {apiData && seatMapData && (
+        {apiData &&
+          seatMapData &&
+          Object.keys(seatMapData).map((item, index) => {
+            return (
+              <RenderSection
+                key={index}
+                plane={[apiData.Width, apiData.Height]}
+                seatMapData={seatMapData}
+                section={item}
+                z={(Object.keys(seatMapData).length - 1 - index) * 50}
+                camera={camera}
+                setPosition={(x, y, z) => {
+                  camera.position.set(-x, 10, -y);
+                  camera.lookAt(
+                    -apiData.Shapes[0].X,
+                    apiData.Shapes[0].Height / 2,
+                    -apiData.Shapes[0].Y
+                  );
+                }}
+              />
+            );
+          })}
+        {/* {apiData && seatMapData && (
           <RenderSection
             plane={[apiData.Width, apiData.Height]}
             seatMapData={seatMapData}
@@ -103,15 +129,10 @@ function Scene() {
             z={0}
             camera={camera}
             setPosition={(x, y, z) => {
-              camera.position.set(x, 10, y);
-              camera.lookAt(
-                apiData.Shapes[0].X,
-                apiData.Shapes[0].Height / 2,
-                apiData.Shapes[0].Y
-              );
+              camera.position.set(-x, 10, -y);
             }}
           />
-        )}
+        )} */}
         <OrbitControls />
       </group>
     </>
@@ -199,11 +220,11 @@ const Model = ({ color, x, y, z, size = 10, camera, setPosition, parentZ }) => {
 
   return (
     <primitive
-      rotation={[0, 0, 0]}
+      rotation={[0, Math.PI, 0]}
       onClick={handleOnClick}
       color={color}
       object={modelScene}
-      position={[x, 5, y]}
+      position={[x, parentZ + 5, y]}
       scale={size}
     />
   );
@@ -229,7 +250,7 @@ const RenderRow = ({
         rotation={[0, Math.PI, 0]}
         y={plane[1] / 2 - seat.Y}
         x={plane[0] / 2 - seat.X}
-        z={0}
+        z={parentZ}
         setPosition={setPosition}
         parentZ={parentZ}
       />
