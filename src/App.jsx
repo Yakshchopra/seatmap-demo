@@ -13,6 +13,7 @@ import {
   Plane,
   OrbitControls,
 } from '@react-three/drei';
+import gsap from 'gsap';
 
 const SCALE = 10;
 
@@ -111,12 +112,13 @@ function Scene() {
                 z={(Object.keys(seatMapData).length - 1 - index) * 50}
                 camera={camera}
                 setPosition={(x, y, z) => {
-                  camera.position.set(-x, 10, -y);
-                  camera.lookAt(
-                    -apiData.Shapes[0].X,
-                    apiData.Shapes[0].Height / 2,
-                    -apiData.Shapes[0].Y
-                  );
+                  gsap.to(camera.position, {
+                    x: () => -x,
+                    y: () => 10,
+                    z: () => -y,
+                    duration: 1.5,
+                  });
+                  // camera.position.set(-x, 10, -y);
                 }}
               />
             );
