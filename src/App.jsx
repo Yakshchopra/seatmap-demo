@@ -3,7 +3,7 @@
 // src/App.jsx
 
 import * as THREE from 'three';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import {
   Grid,
@@ -13,7 +13,7 @@ import {
   OrbitControls,
 } from '@react-three/drei';
 import gsap from 'gsap';
-import { createSeatMap } from './utils';
+import { createSeatMap, findAngleBetweenLines, findCoordinates } from './utils';
 
 export default function App() {
   return (
@@ -29,6 +29,7 @@ function Scene() {
   const [seatMapData, setSeatMapData] = useState(null);
   const [screenDimensions, setScreenDimensions] = useState(null);
   const [view, setView] = useState('2d');
+  const [extremePoints, setExtremePoints] = useState(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -52,6 +53,8 @@ function Scene() {
   useEffect(() => {
     if (apiData && camera) {
       const categoryMap = createSeatMap(apiData.Seats);
+      const cornerPoints = findCoordinates(apiData);
+      setExtremePoints(cornerPoints);
       setScreenDimensions(apiData.Shapes[0]);
       setSeatMapData(categoryMap);
     }
@@ -69,16 +72,19 @@ function Scene() {
       camera.updateProjectionMatrix();
     }
   }, [view, camera]);
+  const [isMoving, setIsMoving] = useState(false);
 
-  useFrame(() => {
-    if (screenDimensions && view !== '2d') {
-      camera.lookAt(
-        -screenDimensions.Y,
-        screenDimensions.Height / 2,
-        -screenDimensions.X
-      );
-    }
-  });
+  // useFrame(() => {
+  //   if (screenDimensions && view !== '2d' && !isMoving) {
+  //     camera.lookAt(
+  //       -screenDimensions.Y,
+  //       screenDimensions.Height / 2,
+  //       -screenDimensions.X
+  //     );
+  //   }
+  // });
+
+  const orbitalRef = useRef(null);
 
   return (
     <group rotation={[view === '2d' ? Math.PI / 2 : 0, 0, 0]} positionY={-0.5}>
@@ -121,26 +127,74 @@ function Scene() {
               (Object.keys(seatMapData).length - 1 - index) * 50
             }
             setPosition={(x, y, z) => {
+              let point1Line1 = [x, z];
+              let point2Line1 = [100, z];
+              let point1Line2 = [
+                extremePoints.leftmost.X,
+                extremePoints.leftmost.Y,
+              ];
+              let point2Line2 = [x, z];
+
+              orbitalRef.current.minAzimuthAngle = -Infinity;
+              orbitalRef.current.maxAzimuthAngle = Infinity;
+
+              camera.updateProjectionMatrix();
+
               gsap.to(camera.position, {
                 x: () => -x,
                 y: () => z + 10,
                 z: () => -y,
                 duration: 1,
               });
+
+              let minAngle = findAngleBetweenLines(
+                point1Line1,
+                point2Line1,
+                point1Line2,
+                point2Line2
+              );
+
+              let maxAngle = findAngleBetweenLines(
+                point1Line1,
+                point2Line1,
+                [extremePoints.rightmost.X, extremePoints.rightmost.Y],
+                point2Line2
+              );
+
+              if (minAngle > 90) {
+                minAngle = 180 - minAngle;
+              }
+
+              if (maxAngle > 90) {
+                maxAngle = 180 - maxAngle;
+              }
+
+              orbitalRef.current.minAzimuthAngle = -minAngle * (Math.PI / 180);
+              orbitalRef.current.maxAzimuthAngle = maxAngle * (Math.PI / 180);
+              // camera.updateProjectionMatrix();
             }}
           />
         ))}
-      {view !== '2d' && (
-        <OrbitControls
-          enablePan={true}
-          enableZoom={true}
-          minPolarAngle={Math.PI / 6}
-          maxPolarAngle={Math.PI / 2.2}
-          rotateSpeed={4}
-          panSpeed={2}
-          screenSpacePanning={false}
-        />
-      )}
+
+      <OrbitControls
+        target={
+          new THREE.Vector3(
+            -screenDimensions?.Y,
+            screenDimensions?.Height / 2,
+            -screenDimensions?.X
+          )
+        }
+        enabled={view !== '2d' && screenDimensions}
+        ref={orbitalRef}
+        enablePan={false}
+        enableZoom={false}
+        // minPolarAngle={Math.PI / 6}
+        // maxPolarAngle={Math.PI / 2.2}
+        rotateSpeed={4}
+        panSpeed={2}
+        screenSpacePanning={false}
+        zoomToCursor={true}
+      />
     </group>
   );
 }
@@ -191,9 +245,10 @@ const Model = ({
     return clone;
   }, [gltf.scene, seatColor]);
 
-  const handleOnClick = () => {
+  const handleOnClick = (e) => {
     setPosition(x, y, sectionElevation + 5);
     setView('3d');
+    e.stopPropagation();
   };
 
   return (
