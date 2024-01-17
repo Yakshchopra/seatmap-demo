@@ -169,9 +169,17 @@ function Scene() {
                 maxAngle = 180 - maxAngle;
               }
 
-              orbitalRef.current.minAzimuthAngle = -minAngle * (Math.PI / 180);
+              orbitalRef.current.minAzimuthAngle = -(
+                minAngle *
+                (Math.PI / 180)
+              );
+
               orbitalRef.current.maxAzimuthAngle = maxAngle * (Math.PI / 180);
-              // camera.updateProjectionMatrix();
+
+              if (z === 5) {
+                orbitalRef.current.minPolarAngle = Math.PI / 2;
+                orbitalRef.current.maxPolarAngle = Math.PI / 2;
+              }
             }}
           />
         ))}
@@ -188,8 +196,8 @@ function Scene() {
         ref={orbitalRef}
         enablePan={false}
         enableZoom={false}
-        // minPolarAngle={Math.PI / 6}
-        // maxPolarAngle={Math.PI / 2.2}
+        minPolarAngle={Math.PI / 6}
+        maxPolarAngle={Math.PI / 2.1}
         rotateSpeed={4}
         panSpeed={2}
         screenSpacePanning={false}
